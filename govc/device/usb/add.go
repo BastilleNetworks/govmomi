@@ -30,9 +30,10 @@ import (
 type add struct {
 	*flags.VirtualMachineFlag
 
-	controller  string
-	autoConnect bool
-	ehciEnabled bool
+	controller        string
+	deviceDescription string
+	autoConnect       bool
+	ehciEnabled       bool
 }
 
 func init() {
@@ -43,9 +44,11 @@ func (cmd *add) Register(ctx context.Context, f *flag.FlagSet) {
 	cmd.VirtualMachineFlag, ctx = flags.NewVirtualMachineFlag(ctx)
 	cmd.VirtualMachineFlag.Register(ctx, f)
 
-	ctypes := []string{"usb", "xhci"}
+	ctypes := []string{"usb", "xhci", "device"}
 	f.StringVar(&cmd.controller, "type", ctypes[0],
 		fmt.Sprintf("USB controller type (%s)", strings.Join(ctypes, "|")))
+
+	f.StringVar(&cmd.deviceDescription, "description", "", "Device description")
 
 	f.BoolVar(&cmd.autoConnect, "auto", true, "Enable ability to hot plug devices")
 	f.BoolVar(&cmd.ehciEnabled, "ehci", true, "Enable enhanced host controller interface (USB 2.0)")
@@ -88,6 +91,12 @@ func (cmd *add) Run(ctx context.Context, f *flag.FlagSet) error {
 	case "xhci":
 		c := new(types.VirtualUSBXHCIController)
 		c.AutoConnectDevices = &cmd.autoConnect
+		d = c
+	case "device":
+		c := new(types.VirtualUSB)
+		backingInfo := types.VirtualUSBUSBBackingInfo{}
+		backingInfo.DeviceName = cmd.deviceDescription
+		c.Backing = &backingInfo
 		d = c
 	default:
 		return flag.ErrHelp
